@@ -10,7 +10,7 @@
 
 ## `treasure_manager.c`
 
-  - ***--rules*** : Displays the rules and command can be used
+  - ***--rules*** : Displays the rules and commands that can be used
 
   - ***--add <hunt_id>*** : Add a new treasure to the specified hunt (game session).     Each hunt is stored in a separate directory.
 
