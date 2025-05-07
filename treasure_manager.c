@@ -12,6 +12,7 @@
 #define MAX_CLUE 128
 #define RECORD_SIZE sizeof(struct Treasure)
 
+//the structure for the treasure
 struct Treasure 
 {
     int id;
@@ -21,6 +22,7 @@ struct Treasure
     char clue[MAX_CLUE];
     int value;
 };
+
 
 int get_next_id(const char *hunt_id) 
 {
@@ -155,7 +157,7 @@ void list_treasures(const char *hunt_id)
     struct Treasure t;
     while (read(fd, &t, RECORD_SIZE) == RECORD_SIZE) 
     {
-        printf("\033[1;31m ID: \033[0m %d , \033[1;31m User: \033[0m %s, \033[1;31m Lat: \033[0m %.2f, \033[1;31m Lon: \033[0m %.2f, \033[1;31m Clue: \033[0m %s, \033[1;31m Value: \033[0m %d\n",
+        printf("\033[1;31m ID:\033[0m%d, \033[1;31m User:\033[0m%s, \033[1;31m Lat:\033[0m%.2f, \033[1;31m Lon:\033[0m%.2f, \033[1;31m Clue:\033[0m%s, \033[1;31m Value:\033[0m%d\n",
                t.id, t.username, t.latitude, t.longitude, t.clue, t.value);
     }
     close(fd);
@@ -260,13 +262,13 @@ void remove_hunt(const char *hunt_id)
 
 void print_rules()
 {
-    printf("\033[0;35m");printf("\nWelcome to the treasure manager");printf("\033[0m");
+    printf("\033[1;35m");printf("\nWelcome to the treasure manager\n");printf("\033[0m");
     printf("\nTo be able to do any changes you can use the following commands: \n");
-    printf("\033[0;35m"); printf("\n--add"); printf("\033[0m"); printf(" <hunt_name> to add a treasure in a hunt\n");
-    printf("\033[0;35m"); printf("\n--list"); printf("\033[0m"); printf(" <hunt_name> to view the treasures in a hunt\n");
-    printf("\033[0;35m"); printf("\n--view"); printf("\033[0m");printf(" <hunt_name> <treasure_id> to view the details of a treasure\n");
-    printf("\033[0;35m"); printf("\n--remove_treasure"); printf("\033[0m");printf(" <hunt_name> <treasure_id> to remove a treasure from a hunt\n");
-    printf("\033[0;35m"); printf("\n--remove_hunt"); printf("\033[0m");printf(" <hunt_name> to remove a hunt\n \n");
+    printf("\033[1;35m"); printf("\n--add"); printf("\033[0m"); printf(" <hunt_name> to add a treasure in a hunt\n");
+    printf("\033[1;35m"); printf("\n--list"); printf("\033[0m"); printf(" <hunt_name> to view the treasures in a hunt\n");
+    printf("\033[1;35m"); printf("\n--view"); printf("\033[0m");printf(" <hunt_name> <treasure_id> to view the details of a treasure\n");
+    printf("\033[1;35m"); printf("\n--remove_treasure"); printf("\033[0m");printf(" <hunt_name> <treasure_id> to remove a treasure from a hunt\n");
+    printf("\033[1;35m"); printf("\n--remove_hunt"); printf("\033[0m");printf(" <hunt_name> to remove a hunt\n \n");
 
 }
 
