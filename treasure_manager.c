@@ -266,11 +266,11 @@ void print_rules()
 {
     printf("\033[1;35m");printf("\nWelcome to the treasure manager\n");printf("\033[0m");
     printf("\nTo be able to do any changes you can use the following commands: \n");
-    printf("\033[1;35m"); printf("\n--add"); printf("\033[0m"); printf(" <hunt_name> to add a treasure in a hunt\n");
-    printf("\033[1;35m"); printf("\n--list"); printf("\033[0m"); printf(" <hunt_name> to view the treasures in a hunt\n");
-    printf("\033[1;35m"); printf("\n--view"); printf("\033[0m");printf(" <hunt_name> <treasure_id> to view the details of a treasure\n");
-    printf("\033[1;35m"); printf("\n--remove_treasure"); printf("\033[0m");printf(" <hunt_name> <treasure_id> to remove a treasure from a hunt\n");
-    printf("\033[1;35m"); printf("\n--remove_hunt"); printf("\033[0m");printf(" <hunt_name> to remove a hunt\n \n");
+    printf("\033[1;35m"); printf("--add"); printf("\033[0m"); printf(" <hunt_name> to add a treasure in a hunt\n");
+    printf("\033[1;35m"); printf("--list"); printf("\033[0m"); printf(" <hunt_name> to view the treasures in a hunt\n");
+    printf("\033[1;35m"); printf("--view"); printf("\033[0m");printf(" <hunt_name> <treasure_id> to view the details of a treasure\n");
+    printf("\033[1;35m"); printf("--remove_treasure"); printf("\033[0m");printf(" <hunt_name> <treasure_id> to remove a treasure from a hunt\n");
+    printf("\033[1;35m"); printf("--remove_hunt"); printf("\033[0m");printf(" <hunt_name> to remove a hunt\n \n");
 
 }
 
