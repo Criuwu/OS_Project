@@ -3,7 +3,8 @@
 
 - **`treasure_manager.c`** — program to manage treasures
 - **`treasure_hub.c`** — Interactive shell that manages a background `monitor` process.
-- **`monitor.c`** — Signal-based background process
+- **`monitor.c`** — Signal-based background process, reads commands from a file and responds via pipes
+- **`scozre_calculator.c`** — Extrenal program that computes the total score
 
 
 # Commands for running the program
@@ -29,14 +30,19 @@
   
   - ***list_hunts*** : asks the monitor to list the hunts and the total number of treasures in each
 
-  - ***list_treasures***: tells the monitor to show the information about all treasures in a hunt, the same way as the command line at the previous stage did
+  - ***list_treasures <hunt_id>***: tells the monitor to show the information about all treasures in a hunt, the same way as the command line at the previous stage did
   
-  - ***view_treasure***: tells the monitor to show the information about a treasure in hunt, the same way as the command line at the previous stage did
+  - ***view_treasure <hunt_id> <id>***: tells the monitor to show the information about a treasure in hunt, the same way as the command line at the previous stage did
   
   - ***stop_monitor***: asks the monitor to end then returns to the prompt. Prints monitor's  termination state when it ends.
+
+   - ***calculate_score*** : launches a separate score_calculator process for each existing hunt.
   
   - ***exit*** : if the monitor still runs, prints an error message, otherwise ends the program
 
 
+## `score_calculator.c`
 
+This external program is invoked by treasure_hub when the calculate_score command is issued.
 
+  - ***./score_calculator <hunt_name>*** : Remove an entire hunt

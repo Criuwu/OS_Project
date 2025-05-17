@@ -22,9 +22,19 @@ struct Treasure {
 };
 
 volatile sig_atomic_t sigusr1_received = 0;
+int out_fd = STDOUT_FILENO;
 
 void handle_sigusr1(int sig) {
     sigusr1_received = 1;
+}
+
+void print_to_pipe(const char *format, ...) {
+    char buffer[1024];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    va_end(args);
+    write(out_fd, buffer, strlen(buffer));
 }
 
 void list_hunts() {
@@ -45,7 +55,7 @@ void list_hunts() {
                 close(fd);
             }
 
-            printf("Hunt: %s, Treasures: %d\n", entry->d_name, count);
+            print_to_pipe("Hunt: %s, Treasures: %d\n", entry->d_name, count);
         }
     }
     closedir(d);
@@ -57,13 +67,13 @@ void list_treasures(const char *hunt) {
 
     int fd = open(path, O_RDONLY);
     if (fd < 0) {
-        perror("Failed to open treasures.dat :'(");
+        print_to_pipe("Failed to open treasures.dat :'(\n");
         return;
     }
 
     struct Treasure t;
     while (read(fd, &t, RECORD_SIZE) == RECORD_SIZE) {
-        printf("\033[1;31m ID:\033[0m%d, \033[1;31m User:\033[0m%s, \033[1;31m Lat:\033[0m%.2f, \033[1;31m Lon:\033[0m%.2f, \033[1;31m Clue:\033[0m%s, \033[1;31m Value:\033[0m%d\n",
+        print_to_pipe("ID: %d, User: %s, Lat: %.2f, Lon: %.2f, Clue: %s, Value: %d\n",
                t.id, t.username, t.latitude, t.longitude, t.clue, t.value);
     }
     close(fd);
@@ -75,14 +85,14 @@ void view_treasure(const char *hunt, int id) {
 
     int fd = open(path, O_RDONLY);
     if (fd < 0) {
-        perror("Failed to open treasures.dat");
+        print_to_pipe("Failed to open treasures.dat\n");
         return;
     }
 
     struct Treasure t;
     while (read(fd, &t, RECORD_SIZE) == RECORD_SIZE) {
         if (t.id == id) {
-            printf("Treasure: \033[1;31m ID:\033[0m%d, \033[1;31m User:\033[0m%s, \033[1;31m Lat:\033[0m%.2f, \033[1;31m Lon:\033[0m%.2f, \033[1;31m Clue:\033[0m%s, \033[1;31m Value:\033[0m%d\n",
+            print_to_pipe("Treasure: ID: %d, User: %s, Lat: %.2f, Lon: %.2f, Clue: %s, Value: %d\n",
                    t.id, t.username, t.latitude, t.longitude, t.clue, t.value);
             break;
         }
@@ -117,21 +127,25 @@ void process_command() {
             view_treasure(hunt, id);
         }
     } else if (strcmp(line, "stop_monitor") == 0) {
-        printf("Stopping monitor...\n");
+        print_to_pipe("Stopping monitor...\n");
         usleep(3000000); // Simulate delay (3 seconds)
         exit(0);
     }
 }
 
-int main() 
-{
+int main() {
     struct sigaction sa;
     sa.sa_handler = handle_sigusr1;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
     sigaction(SIGUSR1, &sa, NULL);
 
-    printf("Monitor running. PID: %d\n", getpid());
+    char *pipe_env = getenv("MONITOR_PIPE");
+    if (pipe_env) {
+        out_fd = atoi(pipe_env);
+    }
+
+    print_to_pipe("Monitor running. PID: %d\n", getpid());
 
     while (1) {
         pause();
