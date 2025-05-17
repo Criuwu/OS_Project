@@ -45,4 +45,4 @@
 
 This external program is invoked by treasure_hub when the calculate_score command is issued.
 
-  - ***./score_calculator** : calculates the scores for all the hunts
+  - ***./score_calculator*** : calculates the scores for all the hunts
