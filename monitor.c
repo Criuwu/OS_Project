@@ -11,6 +11,7 @@
 #define RECORD_SIZE sizeof(struct Treasure)
 #define MAX_USERNAME 32
 #define MAX_CLUE 128
+#define OUTPUT_BUFFER_SIZE 4096
 
 struct Treasure {
     int id;
@@ -22,19 +23,16 @@ struct Treasure {
 };
 
 volatile sig_atomic_t sigusr1_received = 0;
-int out_fd = STDOUT_FILENO;
+int output_pipe_fd = -1;
 
 void handle_sigusr1(int sig) {
     sigusr1_received = 1;
 }
 
-void print_to_pipe(const char *format, ...) {
-    char buffer[1024];
-    va_list args;
-    va_start(args, format);
-    vsnprintf(buffer, sizeof(buffer), format, args);
-    va_end(args);
-    write(out_fd, buffer, strlen(buffer));
+void send_output(const char *output) {
+    if (output_pipe_fd != -1) {
+        write(output_pipe_fd, output, strlen(output));
+    }
 }
 
 void list_hunts() {
@@ -42,9 +40,10 @@ void list_hunts() {
     if (!d) return;
 
     struct dirent *entry;
+    char output[OUTPUT_BUFFER_SIZE] = {0};
     while ((entry = readdir(d)) != NULL) {
         if (entry->d_type == DT_DIR && entry->d_name[0] != '.') {
-            char path[128];
+            char path[512];
             snprintf(path, sizeof(path), "%s/treasures.dat", entry->d_name);
 
             int count = 0;
@@ -55,7 +54,8 @@ void list_hunts() {
                 close(fd);
             }
 
-            print_to_pipe("Hunt: %s, Treasures: %d\n", entry->d_name, count);
+            snprintf(output, sizeof(output), "Hunt: %s, Treasures: %d\n", entry->d_name, count);
+            send_output(output);
         }
     }
     closedir(d);
@@ -67,14 +67,17 @@ void list_treasures(const char *hunt) {
 
     int fd = open(path, O_RDONLY);
     if (fd < 0) {
-        print_to_pipe("Failed to open treasures.dat :'(\n");
+        send_output("Failed to open treasures.dat :'(\n");
         return;
     }
 
+    char output[OUTPUT_BUFFER_SIZE] = {0};
     struct Treasure t;
     while (read(fd, &t, RECORD_SIZE) == RECORD_SIZE) {
-        print_to_pipe("ID: %d, User: %s, Lat: %.2f, Lon: %.2f, Clue: %s, Value: %d\n",
-               t.id, t.username, t.latitude, t.longitude, t.clue, t.value);
+        snprintf(output, sizeof(output), 
+                "ID:%d, User:%s, Lat:%.2f, Lon:%.2f, Clue:%s, Value:%d\n",
+                t.id, t.username, t.latitude, t.longitude, t.clue, t.value);
+        send_output(output);
     }
     close(fd);
 }
@@ -85,15 +88,18 @@ void view_treasure(const char *hunt, int id) {
 
     int fd = open(path, O_RDONLY);
     if (fd < 0) {
-        print_to_pipe("Failed to open treasures.dat\n");
+        send_output("Failed to open treasures.dat\n");
         return;
     }
 
+    char output[OUTPUT_BUFFER_SIZE] = {0};
     struct Treasure t;
     while (read(fd, &t, RECORD_SIZE) == RECORD_SIZE) {
         if (t.id == id) {
-            print_to_pipe("Treasure: ID: %d, User: %s, Lat: %.2f, Lon: %.2f, Clue: %s, Value: %d\n",
-                   t.id, t.username, t.latitude, t.longitude, t.clue, t.value);
+            snprintf(output, sizeof(output),
+                    "Treasure: ID:%d, User:%s, Lat:%.2f, Lon:%.2f, Clue:%s, Value:%d\n",
+                    t.id, t.username, t.latitude, t.longitude, t.clue, t.value);
+            send_output(output);
             break;
         }
     }
@@ -127,25 +133,25 @@ void process_command() {
             view_treasure(hunt, id);
         }
     } else if (strcmp(line, "stop_monitor") == 0) {
-        print_to_pipe("Stopping monitor...\n");
+        send_output("Stopping monitor...\n");
         usleep(3000000); // Simulate delay (3 seconds)
         exit(0);
     }
 }
 
-int main() {
+int main(int argc, char *argv[]) {
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <output_pipe_fd>\n", argv[0]);
+        return 1;
+    }
+
+    output_pipe_fd = atoi(argv[1]);
+
     struct sigaction sa;
     sa.sa_handler = handle_sigusr1;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
     sigaction(SIGUSR1, &sa, NULL);
-
-    char *pipe_env = getenv("MONITOR_PIPE");
-    if (pipe_env) {
-        out_fd = atoi(pipe_env);
-    }
-
-    print_to_pipe("Monitor running. PID: %d\n", getpid());
 
     while (1) {
         pause();

@@ -8,6 +8,8 @@
 #include <dirent.h>
 #include <time.h>
 
+//weekeND frumos, hai la vot
+
 #define MAX_USERNAME 32
 #define MAX_CLUE 128
 #define RECORD_SIZE sizeof(struct Treasure)
@@ -272,6 +274,12 @@ void print_rules()
 
 }
 
+void calculate_hunt_scores(const char *hunt_id) {
+    char command[256];
+    snprintf(command, sizeof(command), "./score_calculator %s", hunt_id);
+    system(command);
+}
+
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         fprintf(stderr, "Usage: %s --<operation>\n", argv[0]);
@@ -298,7 +306,9 @@ int main(int argc, char *argv[]) {
     } else if (strcmp(argv[1], "--remove_hunt") == 0 && argc == 3) 
     {
         remove_hunt(argv[2]);
-    } else 
+    } else if (strcmp(argv[1], "--calculate_scores") == 0 && argc == 3) {
+        calculate_hunt_scores(argv[2]);
+    }else 
     {
         fprintf(stderr, "Invalid command or arguments.\n");
         return 1;

@@ -4,14 +4,13 @@
 #include <unistd.h>
 #include <signal.h>
 #include <sys/wait.h>
-#include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
-
-#define MAX_CMD 256
+#include <dirent.h>
 
 pid_t monitor_pid = -1;
 int monitor_running = 0;
-int pipefd[2];
+int pipe_fds[2] = {-1, -1};
 
 void sigchld_handler(int sig) {
     int status;
@@ -29,68 +28,34 @@ void send_command_to_monitor(const char *command) {
     fprintf(fp, "%s\n", command);
     fclose(fp);
     kill(monitor_pid, SIGUSR1);
-
-    // Read output from the monitor via the pipe
-    char buffer[1024];
-    ssize_t n;
-    while ((n = read(pipefd[0], buffer, sizeof(buffer)-1)) > 0) {
-        buffer[n] = '\0';
-        printf("%s", buffer);
-        break;
-    }
 }
 
-void run_score_calculator(const char *hunt_name) {
-    int fd[2];
-    if (pipe(fd) == -1) {
-        perror("Pipe failed");
-        return;
-    }
-
-    pid_t pid = fork();
-    if (pid == 0) {
-        // Child
-        close(fd[0]);
-        dup2(fd[1], STDOUT_FILENO);
-        execl("./score_calculator", "score_calculator", hunt_name, NULL);
-        perror("Failed to exec score_calculator");
-        exit(1);
-    } else if (pid > 0) {
-        // Parent
-        close(fd[1]);
-        char buffer[1024];
-        ssize_t n;
-        while ((n = read(fd[0], buffer, sizeof(buffer)-1)) > 0) {
-            buffer[n] = '\0';
-            printf("%s", buffer);
-        }
-        close(fd[0]);
-        waitpid(pid, NULL, 0);
-    } else {
-        perror("fork");
+void read_monitor_output() {
+    char buffer[1024];
+    ssize_t bytes_read;
+    
+    // Set pipe to non-blocking
+    fcntl(pipe_fds[0], F_SETFL, O_NONBLOCK);
+    
+    while ((bytes_read = read(pipe_fds[0], buffer, sizeof(buffer) - 1)) > 0) {
+        buffer[bytes_read] = '\0';
+        printf("%s", buffer);
     }
 }
 
 void calculate_scores() {
-    DIR *dir = opendir(".");
-    if (!dir) {
-        perror("opendir");
-        return;
+    pid_t pid = fork();
+    if (pid == 0) {
+        // Child process - run score calculator
+        execl("./score_calculator", "score_calculator", NULL);
+        perror("Failed to exec score_calculator");
+        exit(1);
+    } else if (pid > 0) {
+        // Parent process - wait for completion
+        waitpid(pid, NULL, 0);
+    } else {
+        perror("fork failed");
     }
-
-    struct dirent *entry;
-    while ((entry = readdir(dir))) {
-        if (entry->d_type == DT_DIR && entry->d_name[0] != '.') {
-            char path[128];
-            snprintf(path, sizeof(path), "%s/treasures.dat", entry->d_name);
-            if (access(path, F_OK) == 0) {
-                printf("\033[1;33mScores for hunt: %s\033[0m\n", entry->d_name);
-                run_score_calculator(entry->d_name);
-                printf("\n");
-            }
-        }
-    }
-    closedir(dir);
 }
 
 int main() {
@@ -99,6 +64,11 @@ int main() {
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
     sigaction(SIGCHLD, &sa, NULL);
+
+    if (pipe(pipe_fds) == -1) {
+        perror("pipe failed");
+        return 1;
+    }
 
     char input[256];
 
@@ -115,24 +85,18 @@ int main() {
                 continue;
             }
 
-            if (pipe(pipefd) == -1) {
-                perror("pipe");
-                continue;
-            }
-
             monitor_pid = fork();
             if (monitor_pid == 0) {
-                // Child: set pipe for writing
-                close(pipefd[0]);
-                char fd_str[10];
-                snprintf(fd_str, sizeof(fd_str), "%d", pipefd[1]);
-                setenv("MONITOR_PIPE", fd_str, 1);
-                execl("./monitor", "monitor", NULL);
+                // Child process - monitor
+                close(pipe_fds[0]);
+                char fd_str[16];
+                snprintf(fd_str, sizeof(fd_str), "%d", pipe_fds[1]);
+                execl("./monitor", "monitor", fd_str, NULL);
                 perror("Failed to exec monitor");
                 exit(1);
             } else {
-                // Parent
-                close(pipefd[1]);
+                // Parent process
+                close(pipe_fds[1]);
                 monitor_running = 1;
                 printf("Monitor started with PID %d\n", monitor_pid);
             }
@@ -145,6 +109,8 @@ int main() {
                 continue;
             }
             send_command_to_monitor(input);
+            usleep(100000); // Small delay to allow monitor to process
+            read_monitor_output();
 
         } else if (strcmp(input, "stop_monitor") == 0) {
             if (!monitor_running) {
@@ -152,9 +118,12 @@ int main() {
                 continue;
             }
             send_command_to_monitor("stop_monitor");
+            usleep(100000);
+            read_monitor_output();
 
         } else if (strcmp(input, "calculate_score") == 0) {
             calculate_scores();
+
         } else if (strcmp(input, "exit") == 0) {
             if (monitor_running) {
                 printf("\033[1;31m Monitor is still running. Stop it before exiting. \033[0m  \n");
@@ -166,5 +135,7 @@ int main() {
         }
     }
 
+    close(pipe_fds[0]);
+    if (pipe_fds[1] != -1) close(pipe_fds[1]);
     return 0;
 }
