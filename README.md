@@ -36,7 +36,7 @@
   
   - ***stop_monitor***: asks the monitor to end then returns to the prompt. Prints monitor's  termination state when it ends.
 
-   - ***calculate_score*** : launches a separate score_calculator process for each existing hunt.
+   - ***calculate_score*** : launches a separate score_calculator process for each existing hunt. (can run without starting the monitor)
   
   - ***exit*** : if the monitor still runs, prints an error message, otherwise ends the program
 

@@ -100,7 +100,8 @@ int main()
             }
 
             monitor_pid = fork();
-            if (monitor_pid == 0) {
+            if (monitor_pid == 0) 
+            {
                 // Child process - monitor
                 close(pipe_fds[0]);
                 char fd_str[16];
