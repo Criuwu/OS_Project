@@ -27,17 +27,20 @@ struct UserScore {
     int total_value;
 };
 
-void calculate_scores_for_hunt(const char *hunt_name) {
+void calculate_scores_for_hunt(const char *hunt_name) 
+{
     char path[PATH_MAX];  // Use system-defined maximum path length
     int needed = snprintf(path, sizeof(path), "%s/treasures.dat", hunt_name);
     
-    if (needed >= sizeof(path)) {
+    if (needed >= sizeof(path)) 
+    {
         fprintf(stderr, "Path too long for hunt: %s\n", hunt_name);
         return;
     }
 
     FILE *fp = fopen(path, "rb");
-    if (!fp) {
+    if (!fp) 
+    {
         fprintf(stderr, "Failed to open treasures file for hunt %s\n", hunt_name);
         return;
     }
@@ -46,28 +49,35 @@ void calculate_scores_for_hunt(const char *hunt_name) {
     int num_users = 0;
 
     struct Treasure t;
-    while (fread(&t, RECORD_SIZE, 1, fp) == 1) {
+    while(fread(&t, RECORD_SIZE, 1, fp) == 1) 
+    {
         int found = 0;
-        for (int i = 0; i < num_users; i++) {
-            if (strcmp(scores[i].username, t.username) == 0) {
+        for (int i = 0; i < num_users; i++) 
+        {
+            if (strcmp(scores[i].username, t.username) == 0) 
+            {
                 scores[i].total_value += t.value;
                 found = 1;
                 break;
             }
         }
-        if (!found && num_users < MAX_USERS) {
+        if (!found && num_users < MAX_USERS) 
+        {
             strncpy(scores[num_users].username, t.username, MAX_USERNAME);
             scores[num_users].username[MAX_USERNAME - 1] = '\0';  // Ensure null-termination
             scores[num_users].total_value = t.value;
             num_users++;
         }
-    }
+    }       
     fclose(fp);
 
     // Sort scores in descending order
-    for (int i = 0; i < num_users - 1; i++) {
-        for (int j = 0; j < num_users - i - 1; j++) {
-            if (scores[j].total_value < scores[j+1].total_value) {
+    for (int i = 0; i < num_users - 1; i++) 
+    {
+        for (int j = 0; j < num_users - i - 1; j++) 
+        {
+            if (scores[j].total_value < scores[j+1].total_value) 
+            {
                 struct UserScore temp = scores[j];
                 scores[j] = scores[j+1];
                 scores[j+1] = temp;
@@ -76,27 +86,34 @@ void calculate_scores_for_hunt(const char *hunt_name) {
     }
 
     printf("\n\033[1;36m=== Scores for hunt '%s' ===\033[0m\n", hunt_name);
-    for (int i = 0; i < num_users; i++) {
+    for (int i = 0; i < num_users; i++) 
+    {
         printf("%-20s: %5d points\n", scores[i].username, scores[i].total_value);
     }
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) 
+{
+
     if (argc == 1) {
         // Calculate scores for all hunts
         DIR *d = opendir(".");
-        if (!d) {
+        if (!d) 
+        {
             perror("Failed to open directory");
             return 1;
         }
 
         struct dirent *entry;
-        while ((entry = readdir(d)) != NULL) {
-            if (entry->d_type == DT_DIR && entry->d_name[0] != '.') {
+        while ((entry = readdir(d)) != NULL) 
+        {
+            if (entry->d_type == DT_DIR && entry->d_name[0] != '.') 
+            {
                 char path[PATH_MAX];
                 int needed = snprintf(path, sizeof(path), "%s/treasures.dat", entry->d_name);
                 
-                if (needed < sizeof(path) && access(path, F_OK) == 0) {
+                if (needed < sizeof(path) && access(path, F_OK) == 0) 
+                {
                     calculate_scores_for_hunt(entry->d_name);
                 }
             }

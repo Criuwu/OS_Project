@@ -24,7 +24,7 @@
   - ***--remove_hunt <hunt_id>*** : Remove an entire hunt
 
 
-## `treasure_manager.c`
+## `treasure_hub.c`
 
   - ***start_monitor*** : starts a separate background process that monitors the hunts and prints to the standard output information about them when asked to
   

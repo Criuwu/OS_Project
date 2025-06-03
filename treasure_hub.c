@@ -12,16 +12,23 @@ pid_t monitor_pid = -1;
 int monitor_running = 0;
 int pipe_fds[2] = {-1, -1};
 
-void sigchld_handler(int sig) {
+// Function to handle signal SIGCHLD
+// This function is called when the monitor process terminates
+void sigchld_handler(int sig) 
+{
     int status;
     waitpid(monitor_pid, &status, 0);
     monitor_running = 0;
     printf("\033[1;31m Monitor process terminated. Exit status: %d\n \033[0m ", WEXITSTATUS(status));
 }
 
-void send_command_to_monitor(const char *command) {
+// Function to send commands to the monitor process
+// This function writes the command to a file and signals the monitor to read it
+void send_command_to_monitor(const char *command) 
+{
     FILE *fp = fopen("hub_command.txt", "w");
-    if (!fp) {
+    if (!fp) 
+    {
         perror("Failed to write command");
         return;
     }
@@ -30,20 +37,23 @@ void send_command_to_monitor(const char *command) {
     kill(monitor_pid, SIGUSR1);
 }
 
-void read_monitor_output() {
+void read_monitor_output()
+{
     char buffer[1024];
     ssize_t bytes_read;
+
+    fcntl(pipe_fds[0], F_SETFL, O_NONBLOCK); // Set the read end of the pipe to non-blocking mode, so that it does not wait if there is no data to read
     
-    // Set pipe to non-blocking
-    fcntl(pipe_fds[0], F_SETFL, O_NONBLOCK);
-    
-    while ((bytes_read = read(pipe_fds[0], buffer, sizeof(buffer) - 1)) > 0) {
+    while((bytes_read = read(pipe_fds[0], buffer, sizeof(buffer) - 1)) > 0) 
+    {
         buffer[bytes_read] = '\0';
         printf("%s", buffer);
     }
 }
 
-void calculate_scores() {
+void calculate_scores() 
+{
+    
     pid_t pid = fork();
     if (pid == 0) {
         // Child process - run score calculator
@@ -58,14 +68,18 @@ void calculate_scores() {
     }
 }
 
-int main() {
+int main() 
+{
+
     struct sigaction sa;
-    sa.sa_handler = sigchld_handler;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
+    sa.sa_handler = sigchld_handler; // Pointer to your signal handler function
+    sigemptyset(&sa.sa_mask);  // Block no other signals while in handler
+    sa.sa_flags = 0; // Flags for extra behavior
+
     sigaction(SIGCHLD, &sa, NULL);
 
-    if (pipe(pipe_fds) == -1) {
+    if (pipe(pipe_fds) == -1) 
+    {
         perror("pipe failed");
         return 1;
     }

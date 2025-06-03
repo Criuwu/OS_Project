@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <time.h>
+#include <errno.h> 
 
 //weekeND frumos, hai la vot
 
@@ -14,7 +15,7 @@
 #define MAX_CLUE 128
 #define RECORD_SIZE sizeof(struct Treasure)
 
-//the structure for the treasure
+// Structure to hold treasure information
 struct Treasure 
 {
     int id;
@@ -25,7 +26,7 @@ struct Treasure
     int value;
 };
 
-
+// This function generates a unique ID for a new treasure
 int get_next_id(const char *hunt_id) 
 {
     char id_path[128];
@@ -43,12 +44,14 @@ int get_next_id(const char *hunt_id)
     return id;
 }
 
+// This function updates the IDs of treasures after one is removed
 void update_ids_after_removal(const char *hunt_id) 
 {
     char file_path[128], temp_path[128];
     snprintf(file_path, sizeof(file_path), "%s/treasures.dat", hunt_id);
     snprintf(temp_path, sizeof(temp_path), "%s/tmp.dat", hunt_id);
 
+    // Open the original file and a temporary file
     int fd = open(file_path, O_RDONLY);
     int temp_fd = open(temp_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd < 0 || temp_fd < 0) 
@@ -57,6 +60,7 @@ void update_ids_after_removal(const char *hunt_id)
         return;
     }
 
+    // Read treasures and reassign IDs
     struct Treasure t;
     int new_id = 1;
     while (read(fd, &t, RECORD_SIZE) == RECORD_SIZE) 
@@ -79,6 +83,7 @@ void update_ids_after_removal(const char *hunt_id)
     }
 }
 
+// This function writes the actions performed in the hunt in a log file
 void log_action(const char *hunt_id, const char *action) 
 {
     char log_path[128];
@@ -92,17 +97,24 @@ void log_action(const char *hunt_id, const char *action)
     dprintf(fd, "%s\n", action);
     close(fd);
 
+    // Create a symlink to the log file for easy access
     char link_name[128];
     snprintf(link_name, sizeof(link_name), "logged_hunt-%s", hunt_id);
     unlink(link_name);
     symlink(log_path, link_name);
 }
 
+// This function creates a new treasure in the hunt directory and initializes the ID counter
 void add_treasure(const char *hunt_id) 
 {
     char dir[64];
     snprintf(dir, sizeof(dir), "%s", hunt_id);
-    mkdir(dir, 0755);
+
+    if (mkdir(dir, 0755) == -1 && errno != EEXIST) // Check if directory already exists and if it can be created
+    {
+        perror("Failed to create hunt directory");
+        return;
+    }
 
     int new_id = get_next_id(hunt_id);
     if (new_id < 0) 
@@ -135,9 +147,10 @@ void add_treasure(const char *hunt_id)
 
     char log_msg[256];
     snprintf(log_msg, sizeof(log_msg), "Added treasure ID %d", t.id);
-    log_action(hunt_id, log_msg);
+    log_action(hunt_id, log_msg); //writes the action in the log file
 }
 
+// This function lists all treasures in a hunt directory
 void list_treasures(const char *hunt_id) 
 {
     char file_path[128];
@@ -153,6 +166,7 @@ void list_treasures(const char *hunt_id)
     struct stat st;
     stat(file_path, &st);
 
+    // Print hunt information
     printf("Hunt: %s\nFile size: %ld bytes\nLast modified: %s\n",
            hunt_id, st.st_size, ctime(&st.st_mtime));
 
@@ -163,9 +177,10 @@ void list_treasures(const char *hunt_id)
                t.id, t.username, t.latitude, t.longitude, t.clue, t.value);
     }
     close(fd);
-    log_action(hunt_id, "Listed treasures");
+    log_action(hunt_id, "Listed treasures"); // Log the action of listing treasures
 }
 
+// This function views a specific treasure by its ID in a hunt directory
 void view_treasure(const char *hunt_id, const char *tid_str) 
 {
     int tid = atoi(tid_str);
@@ -179,9 +194,11 @@ void view_treasure(const char *hunt_id, const char *tid_str)
         return;
     }
 
+    // Traverse the file and find the treasure with the given ID
     struct Treasure t;
-    while (read(fd, &t, RECORD_SIZE) == RECORD_SIZE) 
+    while(read(fd, &t, RECORD_SIZE) == RECORD_SIZE) 
     {
+        // Check if the current treasure's ID matches the requested ID and print its details
         if (t.id == tid) 
         {
             printf("Found Treasure:\nID: %d\nUser: %s\nLat: %.2f\nLon: %.2f\nClue: %s\nValue: %d\n",
@@ -197,6 +214,7 @@ void view_treasure(const char *hunt_id, const char *tid_str)
     close(fd);
 }
 
+// This function removes a treasure by its ID from the hunt directory
 void remove_treasure(const char *hunt_id, const char *tid_str) 
 {
     int tid = atoi(tid_str);
@@ -206,7 +224,7 @@ void remove_treasure(const char *hunt_id, const char *tid_str)
 
     int fd = open(file_path, O_RDONLY);
     int temp_fd = open(temp_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (fd < 0 || temp_fd < 0) 
+    if (fd < 0 || temp_fd < 0) // Check if files can be opened
     {
         perror("Error opening files");
         return;
@@ -214,6 +232,7 @@ void remove_treasure(const char *hunt_id, const char *tid_str)
 
     struct Treasure t;
     int found = 0;
+    // Read treasures and write to temporary file, skipping the one to be removed
     while (read(fd, &t, RECORD_SIZE) == RECORD_SIZE) 
     {
         if (t.id != tid) 
@@ -228,7 +247,7 @@ void remove_treasure(const char *hunt_id, const char *tid_str)
     close(temp_fd);
     rename(temp_path, file_path);
 
-    if (found) 
+    if(found) // Treasure was found and removed, update IDs and log the action
     {
         printf("Treasure %d removed. IDs will be updated.\n", tid);
         update_ids_after_removal(hunt_id);
@@ -241,6 +260,7 @@ void remove_treasure(const char *hunt_id, const char *tid_str)
     }
 }
 
+// This function removes a hunt directory and all its contents
 void remove_hunt(const char *hunt_id) 
 {
     char file_path[128];
@@ -262,6 +282,7 @@ void remove_hunt(const char *hunt_id)
     printf("Hunt %s removed.\n", hunt_id);
 }
 
+// This function prints the rules and commands for using the treasure manager
 void print_rules()
 {
     printf("\033[1;35m");printf("\nWelcome to the treasure manager\n");printf("\033[0m");
@@ -274,10 +295,12 @@ void print_rules()
 
 }
 
-void calculate_hunt_scores(const char *hunt_id) {
+// This function calculates the scores for a hunt by calling an external score calculator
+void calculate_hunt_scores(const char *hunt_id) 
+{
     char command[256];
     snprintf(command, sizeof(command), "./score_calculator %s", hunt_id);
-    system(command);
+    system(command); // Execute the score calculator with the hunt ID
 }
 
 int main(int argc, char *argv[]) {
@@ -297,17 +320,23 @@ int main(int argc, char *argv[]) {
     } else if (strcmp(argv[1], "--list") == 0 && argc == 3) 
     {
         list_treasures(argv[2]);
+
     } else if (strcmp(argv[1], "--view") == 0 && argc == 4) 
     {
         view_treasure(argv[2], argv[3]);
+
     } else if (strcmp(argv[1], "--remove_treasure") == 0 && argc == 4) 
     {
         remove_treasure(argv[2], argv[3]);
+
     } else if (strcmp(argv[1], "--remove_hunt") == 0 && argc == 3) 
     {
         remove_hunt(argv[2]);
-    } else if (strcmp(argv[1], "--calculate_scores") == 0 && argc == 3) {
+
+    } else if (strcmp(argv[1], "--calculate_scores") == 0 && argc == 3) 
+    {
         calculate_hunt_scores(argv[2]);
+        
     }else 
     {
         fprintf(stderr, "Invalid command or arguments.\n");
